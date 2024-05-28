@@ -11,7 +11,7 @@ def cargar_configuracion(ruta_archivo):
     with open(ruta_archivo, 'r') as archivo:
         return json.load(archivo)
 
-ruta_archivo = r'C:\Users\RUBEN\OneDrive - ULEAM\NIVELACIÓN (CUARTO-QUINTO)\Gestion de Base de Datos\codigo\Seguridad\config.json'
+ruta_archivo = r'C:\Users\RUBEN\OneDrive - ULEAM\NIVELACIÓN (CUARTO-QUINTO)\Gestion de Base de Datos\CodigoGestionBD\Seguridad\config.json'
 
 configuracion = cargar_configuracion(ruta_archivo)
 
@@ -173,7 +173,7 @@ def crear_rol():
             if cursor:
                 cursor.close()
             connection.close()
-            print('Conexión a la base de datos cerrada')
+            #print('Conexión a la base de datos cerrada')
 
 def ver_roles():
 
@@ -203,7 +203,7 @@ def ver_roles():
             if cursor:
                 cursor.close()
             connection.close()
-            print('Conexión a la base de datos cerrada')
+            #print('Conexión a la base de datos cerrada')
 
 def eliminar_rol():
     ver_roles()
@@ -233,9 +233,12 @@ def eliminar_rol():
             print('Conexión a la base de datos cerrada')
 
 def asignar_rol():
+    consultar_usuarios()
     usuario = input("Ingrese el nombre de usuario al que desea asignar el rol: ")
+    
+    ver_roles()
     rol = input("Ingrese el nombre del rol que desea asignar: ")
-
+    
     connection = conectar_base_datos()
     if connection:
         cursor = None
@@ -271,19 +274,19 @@ def mostrar_bases_datos(connection):
     except Error as e:
         print(f"Error al mostrar las bases de datos: {e}")
 
-def seleccionar_carpeta():
-    root = tk.Tk()
-    root.withdraw()
-    carpeta_destino = filedialog.askdirectory(title="Selecciona la carpeta de destino para el respaldo")
-    root.destroy()
-    return carpeta_destino
-
 def seleccionar_archivo():
     root = tk.Tk()
     root.withdraw()
     archivo_respaldo = filedialog.askopenfilename(title="Selecciona el archivo de respaldo")
     root.destroy()
     return archivo_respaldo
+
+def seleccionar_carpeta():
+    root = tk.Tk()
+    root.withdraw()
+    carpeta_destino = filedialog.askdirectory(title="Selecciona la carpeta de destino para el respaldo")
+    root.destroy()
+    return carpeta_destino
 
 def hacer_respaldo():
 
@@ -310,7 +313,9 @@ def hacer_respaldo():
                 nombre_archivo = f"{nombre_base_datos}_{fecha_hora_actual}.sql"
                 ruta_respaldo = os.path.join(carpeta_destino, nombre_archivo)
 
-                comando = f"mysqldump -u root -p -P 3307 {nombre_base_datos} > {ruta_respaldo}"
+
+                contrasena=DB_PASSWORD
+                comando = f"mysqldump -u root -p{contrasena} -P 3306 {nombre_base_datos} > {ruta_respaldo}"
                 # Ejecutar el comando en el shell
                 proceso = subprocess.Popen(comando, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 salida, errores = proceso.communicate()
@@ -327,7 +332,7 @@ def hacer_respaldo():
     finally:
         if connection.is_connected():
             connection.close()
-            print("Conexión a MySQL cerrada.")
+            #print("Conexión a MySQL cerrada.")
 
 def restaurar_respaldo():
     try:
@@ -347,7 +352,8 @@ def restaurar_respaldo():
 
             archivo_respaldo = seleccionar_archivo()
             if archivo_respaldo:
-                comando = f"mysql -u root -p -P 3307 {nombre_nueva_base} < {archivo_respaldo}"
+                contrasena=DB_PASSWORD
+                comando = f"mysql -u root -p{contrasena} -P 3306 {nombre_nueva_base} < {archivo_respaldo}"
                 # Ejecutar el comando en el shell
                 proceso = subprocess.Popen(comando, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                 salida, errores = proceso.communicate()
@@ -363,9 +369,9 @@ def restaurar_respaldo():
     finally:
         if connection.is_connected():
             connection.close()
-            print("Conexión a MySQL cerrada.")
+            #print("Conexión a MySQL cerrada.")
 
-def listar_entidades():
+def listar_entidades2():
     try:
         connection = conectar_base_datos()
 
@@ -419,25 +425,33 @@ def listar_atributos():
                 cursor.execute("SHOW TABLES")
                 tablas = cursor.fetchall()
                 if tablas:
-                    print(f"Entidades y atributos en la base de datos '{nombre_base_datos}':")
+                    print(f"Tablas en la base de datos '{nombre_base_datos}':")
                     for tabla in tablas:
-                        print(f"- Tabla: {tabla[0]}")
-                        # Obtener información de esquema de la tabla
-                        cursor.execute(f"DESCRIBE {tabla[0]}")
+                        print(f"- {tabla[0]}")
+
+                    tabla_seleccionada = input("Ingrese el nombre de la tabla que desea consultar: ")
+
+                    # Verificar si la tabla seleccionada existe
+                    cursor.execute("SHOW TABLES LIKE %s", (tabla_seleccionada,))
+                    if cursor.fetchone():
+                        print(f"Atributos de la tabla '{tabla_seleccionada}':")
+                        # Obtener información de esquema de la tabla seleccionada
+                        cursor.execute(f"DESCRIBE {tabla_seleccionada}")
                         atributos = cursor.fetchall()
-                        print("  Atributos:")
                         for atributo in atributos:
-                            print(f"    - {atributo[0]}")  # Nombre del atributo
+                            print(f"- {atributo[0]} ({atributo[1]})")  # Nombre del atributo y tipo de dato
+                    else:
+                        print(f"La tabla '{tabla_seleccionada}' no existe en la base de datos.")
                 else:
                     print(f"No se encontraron tablas en la base de datos '{nombre_base_datos}'.")
             else:
                 print(f"La base de datos '{nombre_base_datos}' no existe.")
     except Error as e:
-        print(f"Error al listar entidades de la base de datos: {e}")
+        print(f"Error al listar atributos de la base de datos: {e}")
     finally:
         if connection.is_connected():
             connection.close()
-            #print("Conexión a MySQL cerrada.")
+            print("Conexión a MySQL cerrada.")
 
 def agregar_entidad():
     try:
@@ -483,6 +497,91 @@ def agregar_entidad():
             connection.close()
             print("Conexión a MySQL cerrada.")
 
+def listar_entidades(connection):
+    cursor = connection.cursor()
+    cursor.execute("SHOW TABLES")
+    tablas = cursor.fetchall()
+    print("Tablas disponibles:")
+    for tabla in tablas:
+        print(f"- {tabla[0]}")
+    return tablas
+
+def mostrar_datos(connection, entidad, atributos_seleccionados):
+    cursor = connection.cursor()
+    query = f"SELECT {', '.join(atributos_seleccionados)} FROM {entidad}"
+    cursor.execute(query)
+    resultados = cursor.fetchall()
+    for resultado in resultados:
+        print(resultado)
+
+def mostrar_datos(connection, entidad, atributos_seleccionados):
+    cursor = connection.cursor()
+    query = f"SELECT {', '.join(atributos_seleccionados)} FROM {entidad}"
+    cursor.execute(query)
+    resultados = cursor.fetchall()
+    if resultados:
+        print(f"\nDatos de la entidad '{entidad}':")
+        for resultado in resultados:
+            print(resultado)
+    else:
+        print(f"\nNo se encontraron datos para la entidad '{entidad}' con los atributos seleccionados.")
+
+def generar_reporte():
+    try:
+        connection = conectar_base_datos()
+
+        if connection:
+            cursor = connection.cursor()
+
+            # Mostrar las bases de datos disponibles
+            cursor.execute("SHOW DATABASES")
+            bases_datos = cursor.fetchall()
+            print("Bases de datos disponibles:")
+            for db in bases_datos:
+                print(f"- {db[0]}")
+
+            nombre_base_datos = input("Ingrese el nombre de la base de datos que desea consultar: ")
+
+            # Verificar si la base de datos existe
+            cursor.execute("SHOW DATABASES LIKE %s", (nombre_base_datos,))
+            if cursor.fetchone():
+                cursor.execute(f"USE {nombre_base_datos}")
+
+                reportes = []
+
+                while True:
+                    tablas = listar_entidades(connection)
+                    entidad = input("\nIngrese el nombre de la entidad que desea consultar (o 'fin' para generar el reporte y salir): ")
+                    if entidad.lower() == 'fin':
+                        break
+
+                    if (entidad,) in tablas:
+                        cursor.execute(f"DESCRIBE {entidad}")
+                        atributos = [atributo[0] for atributo in cursor.fetchall()]
+                        print("Atributos disponibles:")
+                        print(", ".join(atributos))
+                        seleccionados = input("Ingrese los nombres de los atributos separados por comas (o '*' para todos): ")
+                        if seleccionados.strip() == '*':
+                            atributos_seleccionados = atributos
+                        else:
+                            atributos_seleccionados = [a.strip() for a in seleccionados.split(",")]
+
+                        reportes.append((entidad, atributos_seleccionados))
+                    else:
+                        print(f"La entidad '{entidad}' no existe en la base de datos.")
+
+                # Generar el reporte final
+                for entidad, atributos_seleccionados in reportes:
+                    mostrar_datos(connection, entidad, atributos_seleccionados)
+            else:
+                print(f"La base de datos '{nombre_base_datos}' no existe.")
+    except Error as e:
+        print(f"Error al generar el reporte: {e}")
+    finally:
+        if connection and connection.is_connected():
+            connection.close()
+            #print("Conexión a MySQL cerrada.")
+
 def main():
     while True:
         print("Seleccione una opción:")
@@ -499,7 +598,8 @@ def main():
         print("11. Listar Entidades")
         print("12. Listar Atributos")
         print("13. Agregar Entidad con Atributos")
-        print("12. Salir")
+        print("14. Generar Reporte")
+        print("15. Salir")
         opcion = input("Ingrese el número de la opción que desea ejecutar: ")
         
         if opcion == '1':
@@ -523,79 +623,17 @@ def main():
         elif opcion == '10':
             restaurar_respaldo()
         elif opcion == '11':
-            listar_entidades()
+            listar_entidades2()
         elif opcion == '12':
+            listar_atributos()
+        elif opcion == '13':
+            agregar_entidad()
+        elif opcion == '14':
+            generar_reporte()
+        elif opcion == '15':
             print("Saliendo del programa...")
             break
         else:
             print("Opción inválida. Por favor, ingrese un número válido.")
 
-
-def listar_entidades2(base_datos):
-    cursor = base_datos.cursor()
-    cursor.execute("SHOW TABLES")
-    tablas = cursor.fetchall()
-    print("Entidades disponibles:")
-    for tabla in tablas:
-        print(f"- {tabla[0]}")
-
-def mostrar_datos(base_datos, entidad, atributos):
-    cursor = base_datos.cursor()
-    consulta = f"SELECT {', '.join(atributos)} FROM {entidad}"
-    cursor.execute(consulta)
-    datos = cursor.fetchall()
-    print(f"\nDatos de la entidad '{entidad}':")
-    for dato in datos:
-        print(", ".join(str(d) for d in dato))
-
-def generar_reporte():
-
-    try:
-        connection = conectar_base_datos()
-
-        if connection:
-            cursor = connection.cursor()
-
-            # Mostrar las bases de datos disponibles
-            cursor.execute("SHOW DATABASES")
-            bases_datos = cursor.fetchall()
-            print("Bases de datos disponibles:")
-            for db in bases_datos:
-                print(f"- {db[0]}")
-            
-            nombre_base_datos = input("Ingrese el nombre de la base de datos que desea consultar: ")
-
-            # Verificar si la base de datos existe
-            cursor.execute("SHOW DATABASES LIKE %s", (nombre_base_datos,))
-            if cursor.fetchone():
-                cursor.execute(f"USE {nombre_base_datos}")
-
-                while True:
-                    listar_entidades2(connection)
-                    entidad = input("\nIngrese el nombre de la entidad que desea consultar (o 'fin' para salir): ")
-                    if entidad.lower() == 'fin':
-                        break
-                    if (entidad,) in cursor.fetchall():
-                        cursor.execute(f"DESCRIBE {entidad}")
-                        atributos = [atributo[0] for atributo in cursor.fetchall()]
-                        print("Atributos disponibles:")
-                        print(", ".join(atributos))
-                        seleccionados = input("Ingrese los nombres de los atributos separados por comas (o '*' para todos): ")
-                        if seleccionados.strip() == '*':
-                            atributos_seleccionados = atributos
-                        else:
-                            atributos_seleccionados = [a.strip() for a in seleccionados.split(",")]
-                        mostrar_datos(connection, entidad, atributos_seleccionados)
-                    else:
-                        print(f"La entidad '{entidad}' no existe en la base de datos.")
-            else:
-                print(f"La base de datos '{nombre_base_datos}' no existe.")
-    except Error as e:
-        print(f"Error al generar el reporte: {e}")
-    finally:
-        if connection.is_connected():
-
-            connection.close()
-            print("Conexión a MySQL cerrada.")
-
-generar_reporte()
+main()
